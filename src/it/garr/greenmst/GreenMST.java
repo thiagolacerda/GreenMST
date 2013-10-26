@@ -110,6 +110,7 @@ public class GreenMST implements IFloodlightModule, IGreenMSTService, ITopologyL
 					if (!topoEdges.contains(link) && !topoEdges.contains(link.getInverse())) {
 						logger.debug("Link added: {}.", new Object[] { link });
 		                topoEdges.add(link);
+		                TopologyCostsLoader.getTopologyCosts().markNodeAsAdded(link);
 		                updateLinks();
 		            }
 				}
@@ -117,6 +118,21 @@ public class GreenMST implements IFloodlightModule, IGreenMSTService, ITopologyL
 		}
 	}
 	
+	public boolean hasLinkInDijkstraSet(Set<DijkstraVertex> s, LinkWithCost l) {
+		boolean first = false;
+		boolean second = false;
+		for (DijkstraVertex d : s) {
+			if (d.name.equals(l.getSrc() + ""))
+				first = true;
+			else if (d.name.equals(l.getDst() + ""))
+				second = true;
+			
+			if (first && second)
+				return true;
+		}
+		return false;
+	}
+
 	protected void updateLinks() {
 		logger.debug("Updating MST because of topology change...");
 		HashSet<LinkWithCost> oldRedundantEdges = this.redundantEdges,
@@ -124,7 +140,18 @@ public class GreenMST implements IFloodlightModule, IGreenMSTService, ITopologyL
 		
         try {
         	ArrayList<LinkWithCost> allTopology = new ArrayList<LinkWithCost>(topoEdges);
-        	//allTopology.addAll(oldRedundantEdges);
+        	if (TopologyCostsLoader.getTopologyCosts().hasAll()) {
+        		System.out.println("HAS ALL");
+	        	Set<DijkstraVertex> minSet = TopologyCostsLoader.getMinSubGraph().getMinSubGraphFromTopoEdges(allTopology);
+	        	ArrayList<LinkWithCost> linksToRemove = new ArrayList<LinkWithCost>();
+	        	for (LinkWithCost l : allTopology) {
+	        		if (!hasLinkInDijkstraSet(minSet, l)) {
+	        			System.out.println("Removing link: " + l.getSrc() + " " + l.getDst());
+	        			linksToRemove.add(l);
+	        		}
+	        	}
+	        	allTopology.removeAll(linksToRemove);
+        	}
         	Vector<LinkWithCost> mstEdges = algorithm.perform(allTopology);
         	logger.trace("mstEdges = {}.", new Object[] { printEdges(mstEdges) });
             // In mstEdges we now have all edges of the MST
@@ -133,6 +160,7 @@ public class GreenMST implements IFloodlightModule, IGreenMSTService, ITopologyL
         	logger.trace("newRedundantEdges = {}.", new Object[] { printEdges(newRedundantEdges) });
             // redundantEdges contains edges to be closed according to Kruskal
             // (ie edges in topoEdges but not present in mstEdges, edges not in MSP and not already closed)
+        	//}
         } catch (Exception e) {
             logger.error("Error calculating MST with Kruskal ", e);
         }

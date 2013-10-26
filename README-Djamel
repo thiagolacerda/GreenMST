@@ -1,0 +1,73 @@
+**** Alunos ****
+André Guedes Linhares
+Thiago de Barros Lacerda
+
+*** Tópicos Avançados em Redes de Computadores ***
+Alterar o GreenMST para aproximar a geração do menor subgrafo totalmente conectado de uma topologia
+
+** GreenMST **
+Módulo para o Floodlight (http://www.projectfloodlight.org/), que é um controlodor openflow implementado em Java.
+Com o ele o usuário pode gerar uma MST a partir de uma topologia.
+
+* Funcionamento *
+O GreenMST depende do Floodlight, entao um .jar do Floodlight, v0.9, deve ser gerado e colocado na pasta raiz do
+GreenMST.
+Após o floodlight.jar estar na pasta raiz, um .jar deve ser gerado do GreenMST.
+Com o seguinte comando o GreenMST será carregador, ou seja, sera iniciado o controlador OpenFlow:
+
+$ java -cp floodlight.jar:greenmst.jar -Dlogback.configurationFile=logback.xml net.floodlightcontroller.core.Main -cf
+floodlight.properties
+
+O GreenMST vai então procurar por um arquivo chamado nodecosts.properties, onde está contido todos os pesos de cada link
+(host - switch), para assim poder fazer o calculo da MST.
+Após isso o mininet deve ser iniciado, criando a topologia que reflete o arquivo nodecosts.properties. Para facilitar,
+existe um script, nas pasta scripts, chamado startTopo.sh, que inicia o mininet mandando ele procurar o controlador
+iniciado pelo GreenMST. Esse mesmo script também inicia a topologia que o usuário deseja (opcao --custom). Apos isso, a
+cada link feito (host - switch) o controlador é notificado e então a MST e gerada. O controlador decide os links que
+serão cortados e evia comandos para o mininet fazer o corte dos links.
+
+* Detalhes de implementação *
+O algoritmo de Kruskal e utilizado para o cálculo da MST. Porem, esse algoritmo não consegue gerar o menor subgrafo
+conectado a partir de uma topologia. O que resulta em switches e links, que não são necessários para manter a rede
+conectada, fazendo parte dela.
+
+Nossa abordagem roda um algoritmo antes do Kruskal, descrito abaixo:
+    - Adicionamos o conceito de host no arquivo de pesos (nodecosts.properties), fazendo com que hosts sejam
+    considerados na hora de gerar o subgrafo.
+    - Após a topologia ser toda carregada, o algoritmo de Djikstra é rodado.
+    - Escolhemos um host aleatório e traçamos o menor caminho desse host para todos os outros hosts.
+    - Links que não estão presentes nesses menores caminhos são eliminados da topologia.
+    - Por último rodamos Kruskal para cortar qualquer outro link reduntante que esteja sobrando.
+
+Com o algoritmo descrito acima conseguimos gerar o menor subgrafo totalmente conectado da topologia. Note que,
+dependendo do tamanho da entrada, o resultado final do algoritmo pode ser algo aproximado do ótimo, devido a esse
+problema ser NP completo.
+
+Colocamos 3 topologias de exemplo no diretorio scripts:
+    - paper.py: Topologia descrita no artigo: ElasticTree: Saving Energy in Data Center Networks
+    - template1.py: Topologia com 5 hosts e 6 switches
+    - template2.py: Topologia com 2 hosts e 16 switches
+
+Para rodar utilizando uma das topologias acima edite o script startTopo.sh para carregar a topologia desejada (opção
+--custom). E necessário também renomear o arquivo de custos da topologia para nodecosts.properties, para assim o
+GreenMST achá-lo.
+Para rodar utilizando a topologia do artigo, por exemplo:
+
+$ mv paper.properties nodecosts.properties
+$ java -cp floodlight.jar:greenmst.jar -Dlogback.configurationFile=logback.xml net.floodlightcontroller.core.Main -cf
+floodlight.properties
+
+Em outro terminal, digite
+$ sudo mn --controller=remote,ip=127.0.0.1 --custom paper.py
+
+O GreenMST disponibiliza scripts para ver a topologia original e a topologia final (após os algoritmos). Digite para ver
+a topologia original:
+$ ./viewGreenMSTapis.sh -a topoEdges
+
+Para ver a topologia gerada pelo algoritmo, digite:
+$ ./viewGreenMSTapis.sh -a mstEdges
+
+* Referências Importantes *
+GreenMST: https://github.com/LucaPrete/GreenMST
+Floodlight: http://www.projectfloodlight.org/
+OpenFlow Java API: https://openflow.stanford.edu/static/openflowj/releases/1.0.2/apidocs/

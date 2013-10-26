@@ -40,12 +40,16 @@
 
 package it.garr.greenmst.types;
 
+import it.garr.greenmst.Dijkstra;
+import it.garr.greenmst.DijkstraVertex;
+import it.garr.greenmst.MinSubgraphTopo;
 import it.garr.greenmst.web.serializers.TopologyCostsJSONDeserializer;
 import it.garr.greenmst.web.serializers.TopologyCostsJSONSerializer;
 
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
@@ -60,9 +64,28 @@ public class TopologyCosts {
 	
 	protected static Logger logger = LoggerFactory.getLogger(TopologyCosts.class);
 	private static HashMap<String, Integer> costs = new HashMap<String, Integer>();
+	private static HashMap<String, Boolean> temp = new HashMap<String, Boolean>();
 	public static final int DEFAULT_COST = 1;
 	
-	public TopologyCosts() {
+	public static Dijkstra dijkstra = new Dijkstra();
+	public MinSubgraphTopo minTopo;// = new MinSubgraphTopo();
+	
+	public void markNodeAsAdded(LinkWithCost l) {
+		if (temp.containsKey(l.getSrc() + "," + l.getDst()))
+			temp.put(l.getSrc() + "," + l.getDst(), true);
+		else if (temp.containsKey(l.getDst() + "," + l.getSrc()))
+			temp.put(l.getDst() + "," + l.getSrc(), true);
+	}
+
+	public boolean hasAll() {
+		for (Map.Entry<String, Boolean> entry : temp.entrySet())
+			if (!entry.getValue())
+				return false;
+		return true;
+	}
+	
+	public TopologyCosts(MinSubgraphTopo minSubGraph) {
+		minTopo = minSubGraph;
 		try {
 			//load a properties file from class path, inside static method
 			Properties prop = new Properties(); 
@@ -73,7 +96,28 @@ public class TopologyCosts {
 		      String key = (String) e.nextElement();
 		      Integer value = Integer.parseInt(prop.getProperty(key));
 		      costs.put(key, value);
+		      
+		      String sourceKey = key.split(",")[0] + "";
+		      String destKey = key.split(",")[1] + "";
+		      if (sourceKey.charAt(0) != 'h' && destKey.charAt(0) != 'h')
+		    	  temp.put(key, false);
+		      //System.out.println("SourceKey " + sourceKey + " destKey " + destKey);
+		      DijkstraVertex source = dijkstra.getVertex(sourceKey);
+		      DijkstraVertex dest = dijkstra.getVertex(destKey);
+		      if (source == null) {
+		    	  source = new DijkstraVertex(sourceKey);
+		    	  dijkstra.vertexes.add(source);
+		      }
+		      if (dest == null) {
+		    	  dest = new DijkstraVertex(destKey);
+		    	  dijkstra.vertexes.add(dest);
+		      }
+		      source.addAdjacency(dest, value);
+		      dest.addAdjacency(source, value);
 		    }
+		    for (DijkstraVertex v : dijkstra.vertexes)
+		    	System.out.println("v: " + v.name + " size: " + v.adjacencies.size());
+		    minTopo.fullDijkstra = dijkstra;
 		}  catch (IOException ex) {
 			logger.error("Error while reading nodecosts.properties file.", ex);
 		}

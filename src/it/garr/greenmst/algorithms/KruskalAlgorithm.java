@@ -65,7 +65,7 @@ public class KruskalAlgorithm implements IMinimumSpanningTreeAlgorithm {
 	// KRUSKAL ALGORITHM -- COLUMBIA UNIV. IMPL.
     public Vector<LinkWithCost> perform(List<LinkWithCost> topoEdges, boolean reverse) throws Exception {
 		logger.debug("Starting to perform Kruskal algorithm...");
-		
+
 		if (reverse) {
 			Collections.sort(topoEdges, new Comparator<LinkWithCost>() {
 				public int compare(LinkWithCost link1, LinkWithCost link2) {

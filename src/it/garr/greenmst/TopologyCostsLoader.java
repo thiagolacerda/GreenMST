@@ -42,10 +42,14 @@ package it.garr.greenmst;
 import it.garr.greenmst.types.TopologyCosts;
 
 public final class TopologyCostsLoader {
-	private static final TopologyCosts INSTANCE = new TopologyCosts();
+	private static final MinSubgraphTopo MINSUBGRAPHINSTANCE = new MinSubgraphTopo();
+	private static final TopologyCosts TOPOINSTANCE = new TopologyCosts(MINSUBGRAPHINSTANCE);
 	
 	public static TopologyCosts getTopologyCosts() {
-		return TopologyCostsLoader.INSTANCE;
+		return TopologyCostsLoader.TOPOINSTANCE;
 	}
 	
+	public static MinSubgraphTopo getMinSubGraph() {
+		return TopologyCostsLoader.MINSUBGRAPHINSTANCE;
+	}
 }

@@ -39,6 +39,7 @@
 
 package it.garr.greenmst.web.serializers;
 
+import it.garr.greenmst.TopologyCostsLoader;
 import it.garr.greenmst.types.TopologyCosts;
 
 import java.io.IOException;
@@ -72,7 +73,7 @@ public class TopologyCostsJSONDeserializer extends JsonDeserializer<TopologyCost
             map.put(name, value);
         }
     	
-        TopologyCosts costs = new TopologyCosts();
+        TopologyCosts costs = new TopologyCosts(TopologyCostsLoader.getMinSubGraph());
 		costs.setCostsValues(map);
 		
 		return costs;
